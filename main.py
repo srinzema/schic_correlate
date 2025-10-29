@@ -55,7 +55,7 @@ def main():
         
         for n, future in enumerate(futures, start=1):
             scores.update(future.result())
-            print(f"{n} completed ({time.time() - start:.2fs} seconds)")
+            print(f"{n} completed ({time.time() - start:.2f} seconds)")
 
     df = pd.DataFrame(
         [(ref, comp, chrom, round(corr, 12)) for (ref, comp, chrom), corr in scores.items()],
