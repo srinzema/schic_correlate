@@ -62,7 +62,7 @@ def main():
         columns=["reference", "comparison", "chromosome", "correlation"]
     )
 
-    df.to_csv(args.out_file, index=False)
+    df.to_csv(args.output_file, index=False)
 
 
 if __name__ == "__main__":
