@@ -1,13 +1,11 @@
-from concurrent.futures import ProcessPoolExecutor
-from functools import lru_cache
 from pathlib import Path
-import pandas as pd
+from typing import Tuple, Dict, List
 import numpy as np
 import numba
-import time
+
 
 @numba.njit
-def weighted_correlation(diag1, diag2):
+def weighted_correlation(diag1: np.ndarray, diag2: np.ndarray) -> Tuple[np.float64, np.float64]:
     mask = (diag1 != 0) & (diag2 != 0)
     n = mask.sum()
     if n == 0:
@@ -51,9 +49,9 @@ def weighted_correlation(diag1, diag2):
     return corr, weight
 
 
-def compare(reference, comparisons):
+def compare(reference: Path, comparisons: List[Path]) -> Dict[Tuple[str, str, str], np.float64]:
     _chroms1 = list(reference.glob("*.npz"))
-    results = {}
+    results: Dict[Tuple[str, str, str], np.float64] = {}
 
     for comparison in comparisons:
         chrom_map2 = {p.stem: p for p in comparison.glob("*.npz")}
@@ -65,18 +63,16 @@ def compare(reference, comparisons):
             chrom2 = chrom_map2[chrom1.stem]
 
             with np.load(chrom1) as c1, np.load(chrom2) as c2:
-                weighted_sum = 0.0
-                total_weight = 0.0
+                weighted_sum = np.float64(0.0)
+                total_weight = np.float64(0.0)
 
                 for k in range(len(c1.files)):
-                    # diag1, diag2 = c1[f"arr_{k}"], c2[f"arr_{k}"]
                     diag1 = np.ascontiguousarray(c1[f"arr_{k}"])
                     diag2 = np.ascontiguousarray(c2[f"arr_{k}"])
                     corr, weight = weighted_correlation(diag1, diag2)
                     weighted_sum += corr * weight
                     total_weight += weight
 
-                correlation = weighted_sum / total_weight if total_weight > 0 else 0.0
+                correlation = weighted_sum / total_weight if total_weight > 0 else np.float64(0.0)
                 results[(reference.stem, comparison.stem, chrom1.stem)] = correlation
-                
     return results

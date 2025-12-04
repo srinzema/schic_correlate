@@ -3,9 +3,12 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from modules import preprocess, correlate
+from typing import List, Dict, Tuple
+import numpy as np
 
 
-def cool_file(path_str):
+def cool_file(path_str: str) -> Path:
+    """Return the path if it exists and has a .cool extension, else raise an error."""
     path = Path(path_str)
     if not path.suffix == ".cool":
         raise argparse.ArgumentTypeError(f"File {path} is not a .cool file")
@@ -14,7 +17,7 @@ def cool_file(path_str):
     return path
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Hi-C correlation")
     
     parser.add_argument("input_files", type=cool_file, nargs="+", help="Hi-C .cool input files")
@@ -24,11 +27,9 @@ def main():
     parser.add_argument("--cores", type=int, default=1, help="Number of CPU cores for multiprocessing")
     
     args = parser.parse_args()
-    max_workers = min(args.cores, os.cpu_count())
-
-    binsize = cooler.Cooler(str(args.input_files[0])).binsize
-    max_diagonal = args.K // binsize + 1
-
+    max_workers: int = min(args.cores, os.cpu_count())
+    binsize: int = cooler.Cooler(str(args.input_files[0])).binsize
+    max_diagonal: int = args.K // binsize + 1
     
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -37,12 +38,12 @@ def main():
         print(f"Preprocessing, using tempdir: {tmpdir}")
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(preprocess.preprocess_file, file, args.h, max_diagonal, tmpdir) for file in args.input_files]
-            normalized_paths = [future.result() for future in futures]
+            normalized_paths: List[Path] = [future.result() for future in futures]
 
         # Correlate
         print("Calculating correlation scores")
         start = time.time()
-        scores = {}
+        scores: Dict[Tuple[str, str, str], np.float64] = {}
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for n, reference in enumerate(normalized_paths):
