@@ -69,7 +69,9 @@ def compare(reference, comparisons):
                 total_weight = 0.0
 
                 for k in range(len(c1.files)):
-                    diag1, diag2 = c1[f"arr_{k}"], c2[f"arr_{k}"]
+                    # diag1, diag2 = c1[f"arr_{k}"], c2[f"arr_{k}"]
+                    diag1 = np.ascontiguousarray(c1[f"arr_{k}"])
+                    diag2 = np.ascontiguousarray(c2[f"arr_{k}"])
                     corr, weight = weighted_correlation(diag1, diag2)
                     weighted_sum += corr * weight
                     total_weight += weight
