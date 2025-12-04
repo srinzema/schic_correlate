@@ -13,11 +13,36 @@ def weighted_correlation(diag1, diag2):
     if n == 0:
         return 0.0, 0.0  # corr, weight
 
-    x, y = diag1[mask], diag2[mask]
-    xm, ym = x.mean(), y.mean()
-    cov = np.mean((x - xm) * (y - ym))
-    sx, sy = np.std(x), np.std(y)
-    corr = 0.0 if sx == 0.0 or sy == 0.0 else cov / (sx * sy)
+    # Extract non-zero elements
+    x = diag1[mask]
+    y = diag2[mask]
+
+    x_sum = np.float64(0.0)
+    y_sum = np.float64(0.0)
+    for i in range(n):
+        x_sum += x[i]
+        y_sum += y[i]
+    
+    x_mean = x_sum / n
+    y_mean = y_sum / n
+
+    cov = np.float64(0.0)
+    x_var = np.float64(0.0)
+    y_var = np.float64(0.0)
+    for i in range(n):
+        dx = x[i] - x_mean
+        dy = y[i] - y_mean
+        cov += dx * dy
+        x_var += dx * dx
+        y_var += dy * dy
+    cov /= n
+    x_std = np.sqrt(x_var / n)
+    y_std = np.sqrt(y_var / n)
+
+    if x_std == 0.0 or y_std == 0.0:
+        corr = 0.0
+    else:
+        corr = cov / (x_std * y_std)
 
     weight = 0.0
     if n >= 2:
