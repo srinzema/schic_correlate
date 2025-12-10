@@ -20,7 +20,7 @@ def weighted_correlation(
     Returns:
     Tuple of (correlation, weight), both as floats.
     """
-    mask = (diag1 != 0) & (diag2 != 0)  # positions where either is non-zero
+    mask = (diag1 != 0) | (diag2 != 0)  # positions where either is non-zero
     n = mask.sum()
     if n == 0:
         return 0.0, 0.0  # No overlap, return zero correlation and weight
