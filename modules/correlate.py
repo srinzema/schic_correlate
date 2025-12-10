@@ -6,6 +6,18 @@ import numba
 
 @numba.njit
 def weighted_correlation(diag1: np.ndarray, diag2: np.ndarray) -> Tuple[np.float64, np.float64]:
+    """Compute the weighted correlation between two diagonals.
+
+    Only non-zero entries in both diagonals are considered. Returns the correlation
+    coefficient and a weight based on the number of contributing elements.
+
+    Args:
+    diag1: 1D NumPy array representing the first diagonal.
+    diag2: 1D NumPy array representing the second diagonal.
+
+    Returns:
+    Tuple of (correlation, weight), both as floats.
+    """
     mask = (diag1 != 0) & (diag2 != 0)
     n = mask.sum()
     if n == 0:
@@ -50,6 +62,21 @@ def weighted_correlation(diag1: np.ndarray, diag2: np.ndarray) -> Tuple[np.float
 
 
 def compare(reference: Path, comparisons: List[Path]) -> Dict[Tuple[str, str, str], np.float64]:
+    """Compute weighted correlations between per-chromosome data files.
+
+    For each chromosome present in the reference directory, compares the corresponding
+    files in one or more comparison directories. Extracts diagonals from the stored
+    arrays, computes a weighted correlation for each diagonal, and combines them
+    into a single weighted correlation per chromosome.
+
+    Args:
+    reference: Path to the directory containing reference .npz files.
+    comparisons: List of directories with .npz files to compare against the reference.
+
+    Returns:
+    Dictionary mapping (reference_name, comparison_name, chromosome_name) to
+    the computed weighted correlation as a float.
+    """
     _chroms1 = list(reference.glob("*.npz"))
     results: Dict[Tuple[str, str, str], np.float64] = {}
 

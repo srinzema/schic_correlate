@@ -7,8 +7,7 @@ import numba
 
 @numba.njit
 def mean_filter(mat: np.ndarray, h: int) -> np.ndarray:
-    """
-    Apply a 2D mean filter to a matrix.
+    """Apply a 2D mean filter to a matrix.
 
     Replaces each entry with the average of values in a square neighborhood of
     radius h around it, clipped at matrix boundaries.
