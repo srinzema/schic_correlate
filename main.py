@@ -39,6 +39,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Determine output format
+    output_file = Path(args.output_file)
+    if output_file.suffix == ".parquet":
+        output_format = "parquet"
+    elif output_file.suffixes[-2:] == [".csv", ".gz"]:
+        output_format = "csv.gz"
+    else:
+        raise ValueError("Output file must end with .parquet or .csv.gz")
+
     # Determine number of workers for parallel processing
     max_workers: int = min(args.cores, os.cpu_count())
 
@@ -78,16 +87,18 @@ def main() -> None:
             scores.update(future.result())
             print(f"{n} completed ({time.time() - start:.2f} seconds)")
 
-    # Convert results to a DataFrame and save
     df = pd.DataFrame(
-        [
-            (ref, comp, chrom, round(corr, 12))
-            for (ref, comp, chrom), corr in scores.items()
-        ],
-        columns=["reference", "comparison", "chromosome", "correlation"],
+        {
+            "reference": [ref for ref, _, _ in scores.keys()],
+            "comparison": [comp for _, comp, _ in scores.keys()],
+            "chromosome": [chrom for _, _, chrom in scores.keys()],
+            "correlation": [round(corr, 12) for corr in scores.values()],
+        }
     )
-
-    df.to_csv(args.output_file, index=False)
+    if output_format == "parquet":
+        df.to_parquet(output_file, index=False)
+    elif output_format == "csv.gz":
+        df.to_csv(output_file, index=False, compression="gzip")
 
 
 if __name__ == "__main__":
