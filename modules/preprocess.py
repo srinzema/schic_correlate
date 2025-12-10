@@ -21,21 +21,23 @@ def mean_filter(mat: np.ndarray, h: int) -> np.ndarray:
     """
     rows, cols = mat.shape
     output = np.zeros((rows, cols), dtype=mat.dtype)
-    
+
     for x in range(rows):
         for y in range(cols):
+            # Define the neighborhood bounds, clipping at matrix edges
             x_min = max(x - h, 0)
             x_max = min(x + h + 1, rows)
             y_min = max(y - h, 0)
             y_max = min(y + h + 1, cols)
 
+            # Compute the mean over the neighborhood
             n = 0
             neighborhood = 0.0
             for i in range(x_min, x_max):
                 for j in range(y_min, y_max):
                     neighborhood += mat[i, j]
                     n += 1
-            output[x, y] = neighborhood / n
+            output[x, y] = neighborhood / n  # assign mean value
     return output
 
 
@@ -56,14 +58,16 @@ def unstack(mat: np.ndarray, K: int) -> List[np.ndarray]:
 
     rows, cols = mat.shape
     diagonals = []
-    
+
     for k in range(K):
+        # Compute the length of the diagonal (may be shorter at the matrix edge)
         length = min(rows, cols - k)
         diag = np.zeros(length, dtype=mat.dtype)
 
+        # Extract the k-th diagonal
         for i in range(length):
             diag[i] = mat[i, i + k]
-        diagonals.append(diag)
+        diagonals.append(diag)  # store each diagonal as a 1D array
     return diagonals
 
 
@@ -88,7 +92,7 @@ def preprocess_file(file: Path, h: int, K: int, temp_dir: Path = None) -> Path:
 
     temp_dir = temp_dir / file.stem
     temp_dir.mkdir(exist_ok=True, parents=True)
-    
+
     clr: cooler.Cooler = cooler.Cooler(str(file))
     total_contacts = clr.matrix(balance=False)[:].sum()
     if total_contacts == 0 or np.isnan(total_contacts):
@@ -96,15 +100,17 @@ def preprocess_file(file: Path, h: int, K: int, temp_dir: Path = None) -> Path:
 
     for chrom in clr.chromnames:
         # Load and symmetrize chrom matrix
-        mat: np.ndarray = clr.matrix(balance=False, as_pixels=False, join=True).fetch(chrom)
+        mat: np.ndarray = clr.matrix(balance=False, as_pixels=False, join=True).fetch(
+            chrom
+        )
         mat_t = mat.copy().T
-        np.fill_diagonal(mat_t, 0)
+        np.fill_diagonal(mat_t, 0)  # exclude diagonal when symmetrizing
         mat = mat + mat_t
 
         # Normalize, filter, unstack, and save
-        mat = mat / total_contacts
+        mat = mat / total_contacts  # normalize by total contacts over all chromosomes
         mat = mean_filter(mat, h)
         diagonals = unstack(mat, K)
-        np.savez(temp_dir / f"{chrom}.npz", *diagonals)
+        np.savez(temp_dir / f"{chrom}.npz", *diagonals)  # Save as compressed array
 
     return temp_dir
