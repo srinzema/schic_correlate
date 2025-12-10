@@ -17,6 +17,13 @@ def cool_file(path_str: str) -> Path:
     return path
 
 
+def save_df(df: pd.DataFrame, filename: Path, fmt: str) -> None:
+    if fmt == "parquet":
+        df.to_parquet(filename, index=False)
+    elif fmt == "csv.gz":
+        df.to_csv(filename, index=False, compression="gzip")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hi-C correlation")
 
@@ -25,7 +32,21 @@ def main() -> None:
         "input_files", type=cool_file, nargs="+", help="Hi-C .cool input files"
     )
     parser.add_argument(
-        "--output_file", type=Path, required=True, help="File to save results"
+        "--output_prefix",
+        type=Path,
+        required=True,
+        help="Prefix for output files. Chromosome names will be appended if --split is used.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["csv.gz", "parquet"],
+        default="parquet",
+        help="Output format",
+    )
+    parser.add_argument(
+        "--split",
+        action="store_true",
+        help="Split output by chromosome into separate files",
     )
     parser.add_argument(
         "--h", type=int, default=1, help="Mean filter size for preprocessing"
@@ -38,15 +59,6 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-
-    # Determine output format
-    output_file = Path(args.output_file)
-    if output_file.suffix == ".parquet":
-        output_format = "parquet"
-    elif output_file.suffixes[-2:] == [".csv", ".gz"]:
-        output_format = "csv.gz"
-    else:
-        raise ValueError("Output file must end with .parquet or .csv.gz")
 
     # Determine number of workers for parallel processing
     max_workers: int = min(args.cores, os.cpu_count())
@@ -95,10 +107,17 @@ def main() -> None:
             "correlation": [round(corr, 12) for corr in scores.values()],
         }
     )
-    if output_format == "parquet":
-        df.to_parquet(output_file, index=False)
-    elif output_format == "csv.gz":
-        df.to_csv(output_file, index=False, compression="gzip")
+    if args.split:
+        # Loop over chromosomes and save one file per chromosome
+        for chrom in df["chromosome"].unique():
+            filename = Path(f"{args.output_prefix}_{chrom}.{args.format}")
+            filename.parent.mkdir(parents=True, exist_ok=True)  # create directories if needed 
+            save_df(df[df["chromosome"] == chrom], filename, args.format)
+    else:
+        # Save all results in a single file
+        filename = Path(f"{args.output_prefix}.{args.format}")
+        filename.parent.mkdir(parents=True, exist_ok=True)  # create directories if needed
+        save_df(df, filename, args.format)
 
 
 if __name__ == "__main__":
