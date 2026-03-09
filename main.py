@@ -5,6 +5,8 @@ from pathlib import Path
 from modules import preprocess, correlate
 from typing import List, Dict, Tuple
 import numpy as np
+import sys
+from loguru import logger
 
 
 def cool_file(path_str: str) -> Path:
@@ -57,47 +59,95 @@ def main() -> None:
     parser.add_argument(
         "--cores", type=int, default=1, help="Number of CPU cores for multiprocessing"
     )
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Set the logging level",
+    )
 
     args = parser.parse_args()
 
+    # Configure loguru: normal logs (DEBUG, INFO) to stdout, errors (WARNING+) to stderr
+    level = args.log_level.upper()
+    logger.remove()  # Remove default handler
+    if level in ["DEBUG", "INFO"]:
+        logger.add(
+            sys.stdout, level=level, filter=lambda record: record["level"].no <= 20
+        )
+    logger.add(
+        sys.stderr,
+        level=max(level, "WARNING"),
+        filter=lambda record: record["level"].no >= 30,
+    )
+
+    logger.info(
+        f"Starting Hi-C correlation analysis with {len(args.input_files)} input files"
+    )
+    logger.info(
+        f"Output prefix: {args.output_prefix}, Format: {args.format}, Split: {args.split}"
+    )
+    logger.info(f"Parameters: h={args.h}, K={args.K}, cores={args.cores}")
+
     # Determine number of workers for parallel processing
     max_workers: int = min(args.cores, os.cpu_count())
+    logger.info(f"Using {max_workers} CPU cores for parallel processing")
 
     # Compute binsize and max_diagonal for preprocessing
-    binsize: int = cooler.Cooler(str(args.input_files[0])).binsize
-    max_diagonal: int = args.K // binsize + 1
+    try:
+        binsize: int = cooler.Cooler(str(args.input_files[0])).binsize
+        max_diagonal: int = args.K // binsize + 1
+        logger.info(f"Binsize: {binsize}, Max diagonal: {max_diagonal}")
+    except Exception as e:
+        logger.error(f"Error reading binsize from {args.input_files[0]}: {e}")
+        raise
 
     # Use a temporary directory to store per-chromosome processed data
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
+        logger.info(f"Using temporary directory: {tmpdir}")
 
         # Preprocess input files in parallel
-        print(f"Preprocessing, using tempdir: {tmpdir}")
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(
-                    preprocess.preprocess_file, file, args.h, max_diagonal, tmpdir
-                )
-                for file in args.input_files
-            ]
-            normalized_paths: List[Path] = [future.result() for future in futures]
+        logger.info("Starting preprocessing of input files")
+        try:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = [
+                    executor.submit(
+                        preprocess.preprocess_file, file, args.h, max_diagonal, tmpdir
+                    )
+                    for file in args.input_files
+                ]
+                normalized_paths: List[Path] = [future.result() for future in futures]
+            logger.info(f"Preprocessing completed for {len(normalized_paths)} files")
+        except Exception as e:
+            logger.error(f"Error during preprocessing: {e}")
+            raise
 
         # Calculate pairwise correlations in parallel
-        print("Calculating correlation scores")
+        logger.info("Starting correlation calculation")
         start = time.time()
         scores: Dict[Tuple[str, str, str], np.float64] = {}
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-            for n, reference in enumerate(normalized_paths):
-                comparisons = normalized_paths[n:]
-                futures.append(
-                    executor.submit(correlate.compare, reference, comparisons)
-                )
+        try:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
+                for n, reference in enumerate(normalized_paths):
+                    comparisons = normalized_paths[n:]
+                    futures.append(
+                        executor.submit(correlate.compare, reference, comparisons)
+                    )
 
-        # Collect results as they complete
-        for n, future in enumerate(futures, start=1):
-            scores.update(future.result())
-            print(f"{n} completed ({time.time() - start:.2f} seconds)")
+            # Collect results as they complete
+            for n, future in enumerate(futures, start=1):
+                scores.update(future.result())
+                logger.info(
+                    f"Correlation batch {n} completed ({time.time() - start:.2f} seconds)"
+                )
+            logger.info(
+                f"Correlation calculation completed in {time.time() - start:.2f} seconds"
+            )
+        except Exception as e:
+            logger.error(f"Error during correlation calculation: {e}")
+            raise
 
     df = pd.DataFrame(
         {
@@ -107,17 +157,32 @@ def main() -> None:
             "correlation": [round(corr, 12) for corr in scores.values()],
         }
     )
-    if args.split:
-        # Loop over chromosomes and save one file per chromosome
-        for chrom in df["chromosome"].unique():
-            filename = Path(f"{args.output_prefix}_{chrom}.{args.format}")
-            filename.parent.mkdir(parents=True, exist_ok=True)  # create directories if needed 
-            save_df(df[df["chromosome"] == chrom], filename, args.format)
-    else:
-        # Save all results in a single file
-        filename = Path(f"{args.output_prefix}.{args.format}")
-        filename.parent.mkdir(parents=True, exist_ok=True)  # create directories if needed
-        save_df(df, filename, args.format)
+    logger.info(f"Created DataFrame with {len(df)} correlation entries")
+
+    try:
+        if args.split:
+            # Loop over chromosomes and save one file per chromosome
+            chromosomes = df["chromosome"].unique()
+            logger.info(f"Splitting output by {len(chromosomes)} chromosomes")
+            for chrom in chromosomes:
+                filename = Path(f"{args.output_prefix}_{chrom}.{args.format}")
+                filename.parent.mkdir(
+                    parents=True, exist_ok=True
+                )  # create directories if needed
+                save_df(df[df["chromosome"] == chrom], filename, args.format)
+                logger.info(f"Saved {filename}")
+        else:
+            # Save all results in a single file
+            filename = Path(f"{args.output_prefix}.{args.format}")
+            filename.parent.mkdir(
+                parents=True, exist_ok=True
+            )  # create directories if needed
+            save_df(df, filename, args.format)
+            logger.info(f"Saved {filename}")
+        logger.info("Analysis completed successfully")
+    except Exception as e:
+        logger.error(f"Error saving output: {e}")
+        raise
 
 
 if __name__ == "__main__":
