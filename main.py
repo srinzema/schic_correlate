@@ -148,7 +148,7 @@ def main() -> None:
                     result_files.append(future.result())
                     # logger.info(f"Correlation batch {n} completed and saved")
                     if total_complete % interval == 0 or total_complete == len(futures):
-                        logger.info(f"{total_complete}/{len(futures)}% complete")
+                        logger.info(f"{total_complete}/{len(futures)} complete")
 
             logger.info(
                 f"Correlation calculation completed in {time.time() - start:.2f} seconds"
