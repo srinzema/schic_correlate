@@ -73,12 +73,16 @@ def main() -> None:
     logger.remove()  # Remove default handler
     if level in ["DEBUG", "INFO"]:
         logger.add(
-            sys.stdout, level=level, filter=lambda record: record["level"].no <= 20
+            sys.stdout,
+            level=level,
+            filter=lambda record: record["level"].no <= 20,
+            format="{time:HH:mm:ss} | {level} | {message}",
         )
     logger.add(
         sys.stderr,
         level=max(level, "WARNING"),
         filter=lambda record: record["level"].no >= 30,
+        format="{time:HH:mm:ss} | {level} | {message}",
     )
 
     logger.info(
