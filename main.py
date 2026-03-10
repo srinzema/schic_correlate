@@ -76,13 +76,13 @@ def main() -> None:
             sys.stdout,
             level=level,
             filter=lambda record: record["level"].no <= 20,
-            format="{time:HH:mm:ss} | {level} | {message}",
+            format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         )
     logger.add(
         sys.stderr,
         level=max(level, "WARNING"),
         filter=lambda record: record["level"].no >= 30,
-        format="{time:HH:mm:ss} | {level} | {message}",
+        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
     )
 
     logger.info(
