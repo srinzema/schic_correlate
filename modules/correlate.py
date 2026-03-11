@@ -3,6 +3,7 @@ from typing import Tuple, Dict, List
 import numpy as np
 import numba
 import pickle
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 @numba.njit
@@ -129,3 +130,33 @@ def compare(
         pickle.dump(results, f)
 
     return result_file
+
+
+def compare_pairwise(normalized_paths: List[Path], max_workers: int = 1) -> List[Path]:
+    """Compute pairwise correlations between normalized data directories.
+
+    For each reference directory, compares it against all subsequent directories
+    (forming upper triangle of pairwise matrix). Results are computed in parallel
+    using ProcessPoolExecutor.
+
+    Args:
+    normalized_paths: List of paths to directories containing per-chromosome .npz files.
+    max_workers: Number of workers for parallel processing.
+
+    Returns:
+    List of paths to pickle files containing correlation results.
+    """
+    result_files: List[Path] = []
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for n, reference in enumerate(normalized_paths):
+            comparisons = normalized_paths[n:]
+            future = executor.submit(compare, reference, comparisons)
+            futures.append(future)
+
+        # Collect results as they complete
+        for future in as_completed(futures):
+            result_files.append(future.result())
+
+    return result_files
