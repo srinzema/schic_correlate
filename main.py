@@ -1,11 +1,12 @@
 import argparse, os, cooler, time, tempfile
 import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from modules import preprocess, correlate
 from typing import List, Dict, Tuple
 import numpy as np
 import sys
+import pickle
 from loguru import logger
 
 
@@ -130,22 +131,25 @@ def main() -> None:
         # Calculate pairwise correlations in parallel
         logger.info("Starting correlation calculation")
         start = time.time()
-        scores: Dict[Tuple[str, str, str], np.float64] = {}
+        result_files: List[Path] = []
         try:
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
                 for n, reference in enumerate(normalized_paths):
                     comparisons = normalized_paths[n:]
-                    futures.append(
-                        executor.submit(correlate.compare, reference, comparisons)
-                    )
+                    future = executor.submit(correlate.compare, reference, comparisons)
+                    futures.append(future)
 
-            # Collect results as they complete
-            for n, future in enumerate(futures, start=1):
-                scores.update(future.result())
-                logger.info(
-                    f"Correlation batch {n} completed ({time.time() - start:.2f} seconds)"
-                )
+                # Save results to temporary files as they complete
+                total_complete = 0
+                interval = len(futures) // 10 if len(futures) >= 10 else 1
+                for future in as_completed(futures):
+                    total_complete += 1
+                    result_files.append(future.result())
+                    # logger.info(f"Correlation batch {n} completed and saved")
+                    if total_complete % interval == 0 or total_complete == len(futures):
+                        logger.info(f"{total_complete}/{len(futures)} complete")
+
             logger.info(
                 f"Correlation calculation completed in {time.time() - start:.2f} seconds"
             )
@@ -153,12 +157,22 @@ def main() -> None:
             logger.error(f"Error during correlation calculation: {e}")
             raise
 
+    # Load and combine all correlation results from temporary files
+    logger.info("Loading and combining correlation results")
+    scores: Dict[Tuple[str, str, str], np.float64] = {}
+    for result_file in result_files:
+        with open(result_file, "rb") as f:
+            scores.update(pickle.load(f))
+
+    keys = list(scores.keys())
+    values = list(scores.values())
+
     df = pd.DataFrame(
         {
-            "reference": [ref for ref, _, _ in scores.keys()],
-            "comparison": [comp for _, comp, _ in scores.keys()],
-            "chromosome": [chrom for _, _, chrom in scores.keys()],
-            "correlation": [round(corr, 12) for corr in scores.values()],
+            "reference": [k[0] for k in keys],
+            "comparison": [k[1] for k in keys],
+            "chromosome": [k[2] for k in keys],
+            "correlation": np.round(values, 12),
         }
     )
     logger.info(f"Created DataFrame with {len(df)} correlation entries")

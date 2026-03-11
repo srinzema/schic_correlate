@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Tuple, Dict, List
 import numpy as np
 import numba
+import pickle
 
 
 @numba.njit
@@ -123,4 +124,8 @@ def compare(
                 )
                 results[(reference.stem, comparison.stem, chrom1.stem)] = correlation
 
-    return results
+    result_file = reference / f"correlation_results_{reference.stem}.pkl"
+    with open(result_file, "wb") as f:
+        pickle.dump(results, f)
+
+    return result_file
