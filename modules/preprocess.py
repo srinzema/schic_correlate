@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import cooler
 import numba
+from concurrent.futures import ProcessPoolExecutor
 
 
 @numba.njit
@@ -114,3 +115,39 @@ def preprocess_file(file: Path, h: int, K: int, temp_dir: Path = None) -> Path:
         np.savez(temp_dir / f"{chrom}.npz", *diagonals)  # Save as compressed array
 
     return temp_dir
+
+
+def calculate_max_diagonal(file, K):
+    # Compute max_diagonal from the first file
+    binsize: int = cooler.Cooler(str(file)).binsize
+    max_diagonal: int = K // binsize + 1
+
+    return max_diagonal
+
+
+def preprocess_files(
+    files: List[Path], h: int, K: int, temp_dir: Path, max_workers: int = 1
+) -> List[Path]:
+    """Preprocess multiple cooler files in parallel.
+
+    Computes max_diagonal from the first file, then processes all files.
+
+    Args:
+    files: List of paths to input .cool or .mcool files.
+    h: Window size parameter for the mean filter.
+    K: Number of diagonals to extract from each contact matrix.
+    temp_dir: Base directory where intermediate per-chromosome results
+    will be written.
+    max_workers: Number of workers for parallel processing.
+
+    Returns:
+    List of paths to directories containing the processed per-chromosome .npz files.
+    """
+    max_diagonal = calculate_max_diagonal(files[0], K)
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(preprocess_file, file, h, max_diagonal, temp_dir)
+            for file in files
+        ]
+        normalized_paths: List[Path] = [future.result() for future in futures]
+    return normalized_paths
