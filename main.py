@@ -65,10 +65,11 @@ def main() -> None:
             )
             for file in filenames:
                 logger.info(f"Saved results to {file}")
-            logger.info("Analysis completed successfully")
         except Exception as e:
             logger.error(f"Error saving results: {e}")
             raise
+
+    logger.info("Analysis completed successfully")
 
 
 if __name__ == "__main__":
