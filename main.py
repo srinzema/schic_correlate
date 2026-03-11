@@ -1,6 +1,5 @@
 import argparse, os, cooler, time, tempfile
 import pandas as pd
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from modules import preprocess, correlate
 from typing import List, Dict, Tuple
@@ -117,25 +116,10 @@ def main() -> None:
         # Calculate pairwise correlations in parallel
         logger.info("Starting correlation calculation")
         start = time.time()
-        result_files: List[Path] = []
         try:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = []
-                for n, reference in enumerate(normalized_paths):
-                    comparisons = normalized_paths[n:]
-                    future = executor.submit(correlate.compare, reference, comparisons)
-                    futures.append(future)
-
-                # Save results to temporary files as they complete
-                total_complete = 0
-                interval = len(futures) // 10 if len(futures) >= 10 else 1
-                for future in as_completed(futures):
-                    total_complete += 1
-                    result_files.append(future.result())
-                    # logger.info(f"Correlation batch {n} completed and saved")
-                    if total_complete % interval == 0 or total_complete == len(futures):
-                        logger.info(f"{total_complete}/{len(futures)} complete")
-
+            result_files: List[Path] = correlate.compare_pairwise(
+                normalized_paths, max_workers
+            )
             logger.info(
                 f"Correlation calculation completed in {time.time() - start:.2f} seconds"
             )
