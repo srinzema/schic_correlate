@@ -98,15 +98,6 @@ def main() -> None:
     max_workers: int = min(args.cores, os.cpu_count())
     logger.info(f"Using {max_workers} CPU cores for parallel processing")
 
-    # Compute binsize and max_diagonal for preprocessing
-    try:
-        binsize: int = cooler.Cooler(str(args.input_files[0])).binsize
-        max_diagonal: int = args.K // binsize + 1
-        logger.info(f"Binsize: {binsize}, Max diagonal: {max_diagonal}")
-    except Exception as e:
-        logger.error(f"Error reading binsize from {args.input_files[0]}: {e}")
-        raise
-
     # Use a temporary directory to store per-chromosome processed data
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -115,14 +106,9 @@ def main() -> None:
         # Preprocess input files in parallel
         logger.info("Starting preprocessing of input files")
         try:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = [
-                    executor.submit(
-                        preprocess.preprocess_file, file, args.h, max_diagonal, tmpdir
-                    )
-                    for file in args.input_files
-                ]
-                normalized_paths: List[Path] = [future.result() for future in futures]
+            normalized_paths: List[Path] = preprocess.preprocess_files(
+                args.input_files, args.h, args.K, tmpdir, max_workers
+            )
             logger.info(f"Preprocessing completed for {len(normalized_paths)} files")
         except Exception as e:
             logger.error(f"Error during preprocessing: {e}")
