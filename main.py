@@ -1,11 +1,10 @@
 import argparse, os, cooler, time, tempfile
 import pandas as pd
 from pathlib import Path
-from modules import preprocess, correlate, utils
+from modules import preprocess, correlate, utils, results
 from typing import List, Dict, Tuple
 import numpy as np
 import sys
-import pickle
 from loguru import logger
 
 
@@ -58,50 +57,14 @@ def main() -> None:
             logger.error(f"Error during correlation calculation: {e}")
             raise
 
-    # Load and combine all correlation results from temporary files
-    logger.info("Loading and combining correlation results")
-    scores: Dict[Tuple[str, str, str], np.float64] = {}
-    for result_file in result_files:
-        with open(result_file, "rb") as f:
-            scores.update(pickle.load(f))
-
-    keys = list(scores.keys())
-    values = list(scores.values())
-
-    df = pd.DataFrame(
-        {
-            "reference": [k[0] for k in keys],
-            "comparison": [k[1] for k in keys],
-            "chromosome": [k[2] for k in keys],
-            "correlation": np.round(values, 12),
-        }
-    )
-    logger.info(f"Created DataFrame with {len(df)} correlation entries")
-
-    try:
-        if args.split:
-            # Loop over chromosomes and save one file per chromosome
-            chromosomes = df["chromosome"].unique()
-            logger.info(f"Splitting output by {len(chromosomes)} chromosomes")
-            for chrom in chromosomes:
-                filename = Path(f"{args.output_prefix}_{chrom}.{args.format}")
-                filename.parent.mkdir(
-                    parents=True, exist_ok=True
-                )  # create directories if needed
-                utils.save_df(df[df["chromosome"] == chrom], filename, args.format)
-                logger.info(f"Saved {filename}")
-        else:
-            # Save all results in a single file
-            filename = Path(f"{args.output_prefix}.{args.format}")
-            filename.parent.mkdir(
-                parents=True, exist_ok=True
-            )  # create directories if needed
-            utils.save_df(df, filename, args.format)
-            logger.info(f"Saved {filename}")
-        logger.info("Analysis completed successfully")
-    except Exception as e:
-        logger.error(f"Error saving output: {e}")
-        raise
+        # Load and combine all correlation results, create and save DataFrame
+        try:
+            results.save_results(
+                result_files, args.output_prefix, args.format, args.split
+            )
+        except Exception as e:
+            logger.error(f"Error saving results: {e}")
+            raise
 
 
 if __name__ == "__main__":
