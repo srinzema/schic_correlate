@@ -9,7 +9,6 @@ import pyarrow.compute as pc
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
-
 SCHEMA = pa.schema(
     [
         ("reference", pa.string()),
