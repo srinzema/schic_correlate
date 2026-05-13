@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scHicCorr"
+version = "0.0.1"
+description = "Correlate single-cell Hi-C data."
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "loguru>=0.7",
+    "cooler>=0.10",
+    "numba>=0.62",
+    "numpy>=2.0",
+    "pandas>=2.0",
+    "pyarrow>=21.0",
+]
+
+[project.scripts]
+schiccorr = "scHicCorr.main:main"
+
+[tool.setuptools]
+packages = ["schiccor"] 
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+scHicCorr = { path = ".", editable = true }
+
+[tool.pixi.tasks]

@@ -17,8 +17,8 @@ This tool computes per-chromosome correlations between Hi-C contact matrices sto
 Clone the repository:
 
 ```bash
-git clone git@github.com:srinzema/schic_correlate.git
-cd schic_correlate
+git clone git@github.com:srinzema/scHicCorr.git
+cd scHicCorr
 ```
 
 ## Usage

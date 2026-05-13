@@ -56,4 +56,12 @@ local_settings.py
 .DS_Store
 
 # Logs
-*.log
+*.log# pixi environments
+.pixi/
+.pixi/*
+!.pixi/config.toml
+pixi.lock
+
+
+.gitattributes
+test_env/
