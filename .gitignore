@@ -60,7 +60,6 @@ local_settings.py
 .pixi/
 .pixi/*
 !.pixi/config.toml
-pixi.lock
 
 
 .gitattributes
