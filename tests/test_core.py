@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from schiccorr.modules.correlate import weighted_correlation
 
 
