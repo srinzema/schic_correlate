@@ -1,71 +1,63 @@
-# Single Cell Hi-C Correlation Tool
+# scHicCorr
 
-This tool computes per-chromosome correlations between Hi-C contact matrices stored in .cool files. It supports preprocessing, weighted correlations, and flexible output formats.
+Computes per-chromosome correlations between single-cell Hi-C contact matrices stored in `.cool` files. Supports preprocessing, weighted correlations, and flexible output formats.
 
 ## Features
 
-- Symmetrizes and normalizes Hi-C contact matrices.
-- Applies a 2D mean filter to smooth matrices.
-- Extracts the first K diagonals for analysis.
-- Computes weighted correlations between multiple datasets.
-- Supports compressed CSV (.csv.gz) and Parquet outputs.
-- Optionally splits results by chromosome for easier handling.
-- Parallel processing using multiple CPU cores.
+- Symmetrizes and normalizes Hi-C contact matrices
+- Applies a 2D mean filter to smooth matrices
+- Extracts the first K diagonals for analysis
+- Computes weighted correlations between multiple datasets
+- Outputs compressed CSV (`.csv.gz`) or Parquet
+- Optionally splits results per chromosome
+- Parallel processing via multiple CPU cores
 
 ## Installation
 
-Clone the repository:
-
 ```bash
-git clone git@github.com:srinzema/scHicCorr.git
-cd scHicCorr
+pip install scHicCorr
 ```
 
 ## Usage
 
 ```bash
-python main.py input1.cool input2.cool --output_prefix results/output --format parquet --split --h 1 --K 5000000 --cores 4
+schiccorr input1.cool input2.cool --output_prefix results/output --format parquet --split --h 1 --K 5000000 --cores 4
 ```
 
 ### Arguments
 
-- input_files – One or more .cool Hi-C input files.
-- --output_prefix – Prefix for output files. Chromosome names will be appended if  --split is used.
-- --format – Output format: parquet (default) or csv.gz.
-- --split – Split output by chromosome into separate files.
-- --h – Mean filter size (default: 1).
-- --K – Number of diagonals to extract (default: 5,000,000).
-- --cores – Number of CPU cores for parallel processing (default: 1).
-- --log-level – Logging level: DEBUG, INFO (default), WARNING, ERROR.
+| Argument | Description | Default |
+|---|---|---|
+| `input_files` | One or more `.cool` Hi-C input files | |
+| `--output_prefix` | Prefix for output files (chromosome name appended if `--split`) | |
+| `--format` | Output format: `parquet` or `csv.gz` | `parquet` |
+| `--split` | Split output by chromosome into separate files | |
+| `--h` | Mean filter size | `1` |
+| `--K` | Number of diagonals to extract | `5000000` |
+| `--cores` | Number of CPU cores for parallel processing | `1` |
+| `--log-level` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+| `--log-file` | Write logs to file in addition to stdout | |
 
 ### Examples
 
 Single Parquet file:
 
 ```bash
-python main.py sample1.cool sample2.cool --output_prefix results/hic_corr --format parquet
+schiccorr sample1.cool sample2.cool --output_prefix results/hic_corr
 ```
 
 Split by chromosome, compressed CSV:
 
 ```bash
-python main.py sample1.cool sample2.cool --output_prefix results/hic_corr --format csv.gz --split
+schiccorr sample1.cool sample2.cool --output_prefix results/hic_corr --format csv.gz --split
 ```
 
-With debug logging piped to file:
+Log to file:
 
 ```bash
-python main.py sample1.cool sample2.cool --output_prefix results/hic_corr --log-level DEBUG > my_log.txt
-```
-
-With logging to both stdout and file:
-
-```bash
-python main.py sample1.cool sample2.cool --output_prefix results/hic_corr --log-file my_log.txt
+schiccorr sample1.cool sample2.cool --output_prefix results/hic_corr --log-file run.log
 ```
 
 ## Output
 
-- Parquet or CSV: Each row contains reference, comparison, chromosome, and correlation.
-- When --split is used, each chromosome is saved in a separate file with the chromosome name appended to the prefix.
-- Logs: Output to stdout by default (pipe to file as needed)
+Each row in the output contains `reference`, `comparison`, `chromosome`, and `correlation`. When `--split` is used, one file is written per chromosome with the chromosome name appended to the prefix.
