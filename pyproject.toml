@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scHicCorr"
-version = "0.0.1"
+version = "0.0.2"
 description = "Correlate single-cell Hi-C data."
 requires-python = ">=3.10"
 license = "MIT"
@@ -21,7 +21,8 @@ dependencies = [
 schiccorr = "schiccorr.main:main"
 
 [tool.setuptools]
-packages = ["schiccorr"] 
+packages = ["schiccorr", "schiccorr.modules"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge", "bioconda"]
 platforms = ["linux-64"]
