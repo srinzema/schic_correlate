@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "schic_correlate"
+version = "0.1.0"
+description = "Correlate single-cell Hi-C data."
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "loguru>=0.7",
+    "cooler>=0.10",
+    "numba>=0.62",
+    "numpy>=2.0",
+    "pandas>=2.0",
+    "pyarrow>=21.0",
+]
+
+[project.scripts]
+schic_correlate = "schic_correlate.main:main"
+
+[tool.setuptools]
+packages = ["schic_correlate"] 
