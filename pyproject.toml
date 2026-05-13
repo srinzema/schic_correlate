@@ -22,3 +22,11 @@ schic_correlate = "schic_correlate.main:main"
 
 [tool.setuptools]
 packages = ["schic_correlate"] 
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+schic_correlate = { path = ".", editable = true }
+
+[tool.pixi.tasks]
