@@ -57,6 +57,11 @@ local_settings.py
 
 # Logs
 *.log# pixi environments
+.pixi/
 .pixi/*
 !.pixi/config.toml
+pixi.lock
 
+
+.gitattributes
+test_env/

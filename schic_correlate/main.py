@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import List
-from modules import preprocess, correlate, utils, results
+from .modules import preprocess, correlate, utils, results
 from loguru import logger
 
 

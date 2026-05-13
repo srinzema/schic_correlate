@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-schic_correlate = "schic_correlate.main:main"
+schic-correlate = "schic_correlate.main:main"
 
 [tool.setuptools]
 packages = ["schic_correlate"] 
