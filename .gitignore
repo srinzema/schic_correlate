@@ -61,6 +61,8 @@ local_settings.py
 .pixi/*
 !.pixi/config.toml
 
+# Ruff
+.ruff_cache/
 
 .gitattributes
 test_env/
