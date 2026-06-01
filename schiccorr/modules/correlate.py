@@ -7,156 +7,152 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 @numba.njit
-def weighted_correlation(
-    diag1: np.ndarray, diag2: np.ndarray
-) -> Tuple[np.float64, np.float64]:
-    """Compute the weighted correlation between two diagonals.
+def weighted_correlation(diag1: np.ndarray, diag2: np.ndarray) -> Tuple[float, float]:
+	"""Compute the weighted correlation between two diagonals.
 
-    Only non-zero entries in both diagonals are considered. Returns the correlation
-    coefficient and a weight based on the number of contributing elements.
+	Only non-zero entries in both diagonals are considered. Returns the correlation
+	coefficient and a weight based on the number of contributing elements.
 
-    Args:
-    diag1: 1D NumPy array representing the first diagonal.
-    diag2: 1D NumPy array representing the second diagonal.
+	Args:
+	diag1: 1D NumPy array representing the first diagonal.
+	diag2: 1D NumPy array representing the second diagonal.
 
-    Returns:
-    Tuple of (correlation, weight), both as floats.
-    """
-    mask = (diag1 != 0) | (diag2 != 0)  # positions where either is non-zero
-    n = mask.sum()
-    if n == 0:
-        return 0.0, 0.0  # No overlap, return zero correlation and weight
+	Returns:
+	Tuple of (correlation, weight), both as floats.
+	"""
+	mask = (diag1 != 0) | (diag2 != 0)  # positions where either is non-zero
+	n = mask.sum()
+	if n == 0:
+		return 0.0, 0.0  # No overlap, return zero correlation and weight
 
-    # Extract non-zero elements
-    x = diag1[mask]
-    y = diag2[mask]
+	# Extract non-zero elements
+	x = diag1[mask]
+	y = diag2[mask]
 
-    # Compute sums for means
-    x_sum = np.float64(0.0)
-    y_sum = np.float64(0.0)
-    for i in range(n):
-        x_sum += x[i]
-        y_sum += y[i]
+	# Compute sums for means
+	x_sum = np.float64(0.0)
+	y_sum = np.float64(0.0)
+	for i in range(n):
+		x_sum += x[i]
+		y_sum += y[i]
 
-    x_mean = x_sum / n
-    y_mean = y_sum / n
+	x_mean = x_sum / n
+	y_mean = y_sum / n
 
-    # Compute covariance and variances
-    cov = np.float64(0.0)
-    x_var = np.float64(0.0)
-    y_var = np.float64(0.0)
-    for i in range(n):
-        dx = x[i] - x_mean
-        dy = y[i] - y_mean
-        cov += dx * dy
-        x_var += dx * dx
-        y_var += dy * dy
-    cov /= n
-    x_std = np.sqrt(x_var / n)
-    y_std = np.sqrt(y_var / n)
+	# Compute covariance and variances
+	cov = np.float64(0.0)
+	x_var = np.float64(0.0)
+	y_var = np.float64(0.0)
+	for i in range(n):
+		dx = x[i] - x_mean
+		dy = y[i] - y_mean
+		cov += dx * dy
+		x_var += dx * dx
+		y_var += dy * dy
+	cov /= n
+	x_std = np.sqrt(x_var / n)
+	y_std = np.sqrt(y_var / n)
 
-    # Avoid division by zero if standard deviation is zero
-    if x_std == 0.0 or y_std == 0.0:
-        corr = 0.0
-    else:
-        corr = cov / (x_std * y_std)
+	# Avoid division by zero if standard deviation is zero
+	if x_std == 0.0 or y_std == 0.0:
+		corr = 0.0
+	else:
+		corr = cov / (x_std * y_std)
 
-    # Compute a weight proportional to the number of contributing elements
-    weight = 0.0
-    if n >= 2:
-        weight = n * (1.0 + 1.0 / n) / 12.0
+	# Compute a weight proportional to the number of contributing elements
+	weight = 0.0
+	if n >= 2:
+		weight = n * (1.0 + 1.0 / n) / 12.0
 
-    return corr, weight
+	return corr, weight
 
 
-def compare(
-    reference: Path, comparisons: List[Path]
-) -> Dict[Tuple[str, str, str], np.float64]:
-    """Compute weighted correlations between per-chromosome data files.
+def compare(reference: Path, comparisons: List[Path]) -> Path:
+	"""Compute weighted correlations between per-chromosome data files.
 
-    For each chromosome present in the reference directory, compares the corresponding
-    files in one or more comparison directories. Extracts diagonals from the stored
-    arrays, computes a weighted correlation for each diagonal, and combines them
-    into a single weighted correlation per chromosome.
+	For each chromosome present in the reference directory, compares the corresponding
+	files in one or more comparison directories. Extracts diagonals from the stored
+	arrays, computes a weighted correlation for each diagonal, and combines them
+	into a single weighted correlation per chromosome.
 
-    Args:
-    reference: Path to the directory containing reference .npz files.
-    comparisons: List of directories with .npz files to compare against the reference.
+	Args:
+	reference: Path to the directory containing reference .npz files.
+	comparisons: List of directories with .npz files to compare against the reference.
 
-    Returns:
-    Dictionary mapping (reference_name, comparison_name, chromosome_name) to
-    the computed weighted correlation as a float.
-    """
-    # List all per-chromosome files in the reference directory
-    _chroms1 = list(reference.glob("*.npz"))
+	Returns:
+	Dictionary mapping (reference_name, comparison_name, chromosome_name) to
+	the computed weighted correlation as a float.
+	"""
+	# List all per-chromosome files in the reference directory
+	_chroms1 = list(reference.glob("*.npz"))
 
-    # Initialize dictionary to store results
-    results: Dict[Tuple[str, str, str], np.float64] = {}
+	# Initialize dictionary to store results
+	results: Dict[Tuple[str, str, str], np.float64] = {}
 
-    # Loop over each comparison directory
-    for comparison in comparisons:
-        # Build a mapping from chromosome name to file path in the comparison
-        chrom_map2 = {p.stem: p for p in comparison.glob("*.npz")}
+	# Loop over each comparison directory
+	for comparison in comparisons:
+		# Build a mapping from chromosome name to file path in the comparison
+		chrom_map2 = {p.stem: p for p in comparison.glob("*.npz")}
 
-        for chrom1 in _chroms1:
-            if chrom1.stem not in chrom_map2:
-                print("error", chrom1.stem, chrom_map2)
-                continue  # TODO raise error
-            chrom2 = chrom_map2[chrom1.stem]
+		for chrom1 in _chroms1:
+			if chrom1.stem not in chrom_map2:
+				print("error", chrom1.stem, chrom_map2)
+				continue  # TODO raise error
+			chrom2 = chrom_map2[chrom1.stem]
 
-            # Load the stored diagonals for both reference and comparison
-            with np.load(chrom1) as c1, np.load(chrom2) as c2:
-                weighted_sum = np.float64(0.0)
-                total_weight = np.float64(0.0)
+			# Load the stored diagonals for both reference and comparison
+			with np.load(chrom1) as c1, np.load(chrom2) as c2:
+				weighted_sum = np.float64(0.0)
+				total_weight = np.float64(0.0)
 
-                # Compute weighted correlation for each diagonal
-                for k in range(len(c1.files)):
-                    diag1 = np.ascontiguousarray(c1[f"arr_{k}"])
-                    diag2 = np.ascontiguousarray(c2[f"arr_{k}"])
-                    corr, weight = weighted_correlation(diag1, diag2)
+				# Compute weighted correlation for each diagonal
+				for k in range(len(c1.files)):
+					diag1 = np.ascontiguousarray(c1[f"arr_{k}"])
+					diag2 = np.ascontiguousarray(c2[f"arr_{k}"])
+					corr, weight = weighted_correlation(diag1, diag2)
 
-                    # Accumulate weighted sum and total weight
-                    weighted_sum += corr * weight
-                    total_weight += weight
+					# Accumulate weighted sum and total weight
+					weighted_sum += corr * weight
+					total_weight += weight
 
-                # Compute overall weighted correlation for this chromosome
-                correlation = (
-                    weighted_sum / total_weight if total_weight > 0 else np.float64(0.0)
-                )
-                results[(reference.stem, comparison.stem, chrom1.stem)] = correlation
+				# Compute overall weighted correlation for this chromosome
+				correlation = (
+					weighted_sum / total_weight if total_weight > 0 else np.float64(0.0)
+				)
+				results[(reference.stem, comparison.stem, chrom1.stem)] = correlation
 
-    result_file = reference / f"correlation_results_{reference.stem}.pkl"
-    with open(result_file, "wb") as f:
-        pickle.dump(results, f)
+	result_file = reference / f"correlation_results_{reference.stem}.pkl"
+	with open(result_file, "wb") as f:
+		pickle.dump(results, f)
 
-    return result_file
+	return result_file
 
 
 def compare_pairwise(normalized_paths: List[Path], max_workers: int = 1) -> List[Path]:
-    """Compute pairwise correlations between normalized data directories.
+	"""Compute pairwise correlations between normalized data directories.
 
-    For each reference directory, compares it against all subsequent directories
-    (forming upper triangle of pairwise matrix). Results are computed in parallel
-    using ProcessPoolExecutor.
+	For each reference directory, compares it against all subsequent directories
+	(forming upper triangle of pairwise matrix). Results are computed in parallel
+	using ProcessPoolExecutor.
 
-    Args:
-    normalized_paths: List of paths to directories containing per-chromosome .npz files.
-    max_workers: Number of workers for parallel processing.
+	Args:
+	normalized_paths: List of paths to directories containing per-chromosome .npz files.
+	max_workers: Number of workers for parallel processing.
 
-    Returns:
-    List of paths to pickle files containing correlation results.
-    """
-    result_files: List[Path] = []
+	Returns:
+	List of paths to pickle files containing correlation results.
+	"""
+	result_files: List[Path] = []
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for n, reference in enumerate(normalized_paths):
-            comparisons = normalized_paths[n:]
-            future = executor.submit(compare, reference, comparisons)
-            futures.append(future)
+	with ProcessPoolExecutor(max_workers=max_workers) as executor:
+		futures = []
+		for n, reference in enumerate(normalized_paths):
+			comparisons = normalized_paths[n:]
+			future = executor.submit(compare, reference, comparisons)
+			futures.append(future)
 
-        # Collect results as they complete
-        for future in as_completed(futures):
-            result_files.append(future.result())
+		# Collect results as they complete
+		for future in as_completed(futures):
+			result_files.append(future.result())
 
-    return result_files
+	return result_files
