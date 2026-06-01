@@ -4,24 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scHicCorr"
-version = "0.0.1"
+readme = "README.md"
+version = "0.0.4"
 description = "Correlate single-cell Hi-C data."
 requires-python = ">=3.10"
 license = "MIT"
 dependencies = [
-    "loguru>=0.7",
-    "cooler>=0.10",
+    "loguru>=0.5",
+    "cooler>=0.8",
+    "pandas>=1.5",
     "numba>=0.62",
-    "numpy>=2.0",
-    "pandas>=2.0",
-    "pyarrow>=21.0",
+    "numpy>=1.24",
+    "pyarrow>=14.0",
 ]
 
 [project.scripts]
 schiccorr = "schiccorr.main:main"
 
-[tool.setuptools]
-packages = ["schiccorr"] 
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.pixi.workspace]
 channels = ["conda-forge", "bioconda"]
 platforms = ["linux-64"]
@@ -33,4 +35,15 @@ scHicCorr = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 pytest = ">=9.0.3,<10"
-black = ">=26.1.0,<27"
+twine = "*"
+python-build = "*"
+ruff = ">=0.15.15,<0.16"
+mypy = ">=1.20.2,<2"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
+
+[tool.mypy]
+ignore_missing_imports = true
