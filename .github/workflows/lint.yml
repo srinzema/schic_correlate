@@ -1,0 +1,15 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.0
+      - run: pixi run ruff check schiccorr/
+      - run: pixi run ruff format --check schiccorr/
+      - run: pixi run mypy schiccorr/
